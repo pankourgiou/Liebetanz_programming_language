@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liebetanz — Live Interpreter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Source+Code+Pro:wght@300;400;500&display=swap');
+
+  :root {
+    --ink:       #1a1820;
+    --parchment: #f0ece2;
+    --ash:       #c4bfb0;
+    --silver:    #9a96a8;
+    --mist:      #e6e2d8;
+    --glyph:     #6b6478;
+    --spell:     #4a4258;
+    --accent:    #8a7fa0;
+    --gold:      #b09a5e;
+    --green:     #7ab89a;
+    --red:       #c47a7a;
+    --panel:     #211e2c;
+    --paneldim:  #181620;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+
+  body {
+    background: var(--ink);
+    color: var(--parchment);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--paneldim);
+    border-bottom: 1px solid #2e2a3a;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .topbar h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.1rem;
+    letter-spacing: .08em;
+    color: var(--parchment);
+  }
+
+  .topbar h1 span { color: var(--gold); }
+
+  .topbar .tagline {
+    font-size: .78rem;
+    font-style: italic;
+    color: var(--glyph);
+    letter-spacing: .05em;
+  }
+
+  .topbar .help-btn {
+    margin-left: auto;
+    background: none;
+    border: 1px solid #3a3648;
+    color: var(--silver);
+    font-family: 'Source Code Pro', monospace;
+    font-size: .75rem;
+    padding: 4px 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+  }
+  .topbar .help-btn:hover { border-color: var(--accent); color: var(--parchment); }
+
+  /* ── MAIN LAYOUT ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── EDITOR PANEL ── */
+  .editor-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    border-right: 1px solid #2e2a3a;
+  }
+
+  .panel-label {
+    font-family: 'Source Code Pro', monospace;
+    font-size: .68rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--glyph);
+    padding: 7px 16px;
+    background: var(--paneldim);
+    border-bottom: 1px solid #2e2a3a;
+  }
+
+  #editor {
+    flex: 1;
+    background: #1c1926;
+    color: #d4cfea;
+    font-family: 'Source Code Pro', monospace;
+    font-size: .92rem;
+    line-height: 1.8;
+    padding: 20px;
+    border: none;
+    outline: none;
+    resize: none;
+    tab-size: 2;
+  }
+
+  #editor::placeholder { color: #3a3550; }
+
+  .run-bar {
+    background: var(--paneldim);
+    border-top: 1px solid #2e2a3a;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .run-btn {
+    background: var(--spell);
+    border: none;
+    color: var(--parchment);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: .78rem;
+    padding: 8px 22px;
+    letter-spacing: .1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background .2s;
+  }
+  .run-btn:hover { background: var(--accent); }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid #3a3648;
+    color: var(--glyph);
+    font-family: 'Source Code Pro', monospace;
+    font-size: .75rem;
+    padding: 7px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  .clear-btn:hover { color: var(--silver); border-color: var(--silver); }
+
+  .hint { font-size: .72rem; color: var(--glyph); font-style: italic; margin-left: 4px; }
+
+  /* ── OUTPUT PANEL ── */
+  .output-panel {
+    width: 380px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #13111c;
+    font-family: 'Source Code Pro', monospace;
+    font-size: .85rem;
+    line-height: 1.9;
+  }
+
+  #output::-webkit-scrollbar { width: 4px; }
+  #output::-webkit-scrollbar-track { background: transparent; }
+  #output::-webkit-scrollbar-thumb { background: #3a3550; border-radius: 2px; }
+
+  .out-line { display: flex; gap: 10px; padding: 2px 0; }
+  .out-line .arrow { color: var(--glyph); flex-shrink: 0; }
+  .out-line .val { color: var(--green); }
+  .out-line .err { color: var(--red); font-style: italic; }
+  .out-line .info { color: var(--silver); }
+  .out-line .word-echo { color: var(--gold); }
+
+  /* ── SPELL REFERENCE ── */
+  .ref-panel {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #2e2a3a;
+  }
+
+  .ref-search {
+    background: var(--paneldim);
+    border-bottom: 1px solid #2e2a3a;
+    padding: 7px 12px;
+  }
+  .ref-search input {
+    width: 100%;
+    background: #1c1926;
+    border: 1px solid #3a3648;
+    border-radius: 2px;
+    color: var(--parchment);
+    font-family: 'Source Code Pro', monospace;
+    font-size: .75rem;
+    padding: 5px 10px;
+    outline: none;
+  }
+  .ref-search input:focus { border-color: var(--accent); }
+
+  #ref-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  #ref-list::-webkit-scrollbar { width: 3px; }
+  #ref-list::-webkit-scrollbar-thumb { background: #3a3550; }
+
+  .ref-item {
+    padding: 7px 14px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background .15s, border-color .15s;
+  }
+  .ref-item:hover { background: #1c1926; border-left-color: var(--accent); }
+
+  .ref-item .ref-word {
+    font-family: 'Source Code Pro', monospace;
+    font-size: .8rem;
+    color: var(--gold);
+  }
+  .ref-item .ref-eq {
+    font-family: 'Source Code Pro', monospace;
+    font-size: .7rem;
+    color: #7a70a0;
+    margin-top: 1px;
+  }
+
+  /* ── HELP OVERLAY ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000cc;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.open { display: flex; }
+
+  .help-box {
+    background: var(--panel);
+    border: 1px solid #3a3648;
+    border-radius: 4px;
+    padding: 32px 36px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .help-box h2 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1rem;
+    color: var(--gold);
+    margin-bottom: 20px;
+    letter-spacing: .08em;
+  }
+
+  .help-box .ex {
+    background: #13111c;
+    border-radius: 2px;
+    padding: 12px 16px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: .82rem;
+    color: #d4cfea;
+    line-height: 1.9;
+    margin-bottom: 14px;
+  }
+
+  .help-box .ex .cmt { color: var(--glyph); }
+  .help-box .ex .kw { color: var(--gold); }
+  .help-box .ex .res { color: var(--green); }
+
+  .help-box p { font-size: .95rem; color: var(--silver); line-height: 1.7; margin-bottom: 12px; }
+
+  .close-btn {
+    float: right;
+    background: none;
+    border: 1px solid #3a3648;
+    color: var(--glyph);
+    font-family: 'Source Code Pro', monospace;
+    font-size: .75rem;
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-top: -4px;
+  }
+  .close-btn:hover { color: var(--parchment); }
+
+  @media (max-width: 700px) {
+    .ref-panel { display: none; }
+    .output-panel { width: 45vw; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <h1>Liebe<span>tanz</span></h1>
+  <span class="tagline">the language of grey magic · everybody loves magic</span>
+  <button class="help-btn" onclick="document.getElementById('overlay').classList.add('open')">? syntax</button>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- EDITOR -->
+  <div class="editor-panel">
+    <div class="panel-label">spell editor</div>
+    <textarea id="editor" spellcheck="false" placeholder="type a spell and cast it…
+
+verdant 9
+zwirn 2 10
+mondkurve 0
+bind x = fakultät 6
+silber 1000"></textarea>
+    <div class="run-bar">
+      <button class="run-btn" onclick="runSpells()">✦ Cast</button>
+      <button class="clear-btn" onclick="clearAll()">clear</button>
+      <span class="hint">Ctrl+Enter to cast</span>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-panel">
+    <div class="panel-label">incantation output</div>
+    <div id="output"></div>
+  </div>
+
+  <!-- REFERENCE -->
+  <div class="ref-panel">
+    <div class="panel-label" style="padding:7px 12px;">spellbook</div>
+    <div class="ref-search">
+      <input type="text" placeholder="search spells…" oninput="filterRef(this.value)">
+    </div>
+    <div id="ref-list"></div>
+  </div>
+
+</div>
+
+<!-- HELP OVERLAY -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="help-box">
+    <button class="close-btn" onclick="document.getElementById('overlay').classList.remove('open')">✕ close</button>
+    <h2>Liebetanz Syntax</h2>
+    <p>Each line is one spell. A spell is a <strong>word</strong> followed by its arguments.</p>
+    <div class="ex">
+<span class="cmt">// single-arg spells</span>
+<span class="kw">verdant</span> 9          <span class="res">→ 3</span>
+<span class="kw">fakultät</span> 5         <span class="res">→ 120</span>
+<span class="kw">mondkurve</span> 1.5708   <span class="res">→ 1</span>
+
+<span class="cmt">// two-arg spells</span>
+<span class="kw">zwirn</span> 2 8           <span class="res">→ 256</span>
+<span class="kw">asche</span> 17 5          <span class="res">→ 2</span>
+<span class="kw">ggt</span> 48 18           <span class="res">→ 6</span>
+
+<span class="cmt">// bind a name</span>
+<span class="kw">bind</span> x = <span class="kw">zwirn</span> 3 4  <span class="res">→ x = 81</span>
+
+<span class="cmt">// use a bound name</span>
+<span class="kw">verdant</span> x           <span class="res">→ 9</span>
+
+<span class="cmt">// chain with |</span>
+<span class="kw">silber</span> | <span class="kw">zwirn</span> 10 3  <span class="res">→ log₁₀(1000) = 3</span>
+    </div>
+    <p>Blank lines are ignored. <code>#</code> starts a comment.</p>
+    <p>Click any spell in the spellbook panel to insert it into the editor.</p>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// LIEBETANZ INTERPRETER
+// ══════════════════════════════════════════════════════
+
+const PHI = (1 + Math.sqrt(5)) / 2;
+const TAU = 2 * Math.PI;
+
+// ── spell definitions ──
+// each entry: [arity, fn, signature]
+const SPELLS = {
+  // I · Roots & Powers
+  verdant:     [1, ([x])       => Math.sqrt(x),                   'verdant x → √x'],
+  tiefdrei:    [1, ([x])       => Math.cbrt(x),                   'tiefdrei x → ∛x'],
+  zwirn:       [2, ([x,n])     => Math.pow(x,n),                  'zwirn x n → xⁿ'],
+  quadra:      [1, ([x])       => x*x,                            'quadra x → x²'],
+  würfel:      [1, ([x])       => x*x*x,                          'würfel x → x³'],
+  nwurzel:     [2, ([x,n])     => Math.pow(x,1/n),                'nwurzel x n → x^(1/n)'],
+  rückzwirn:   [2, ([x,n])     => Math.pow(x,-n),                 'rückzwirn x n → x^(-n)'],
+  augenpow:    [1, ([n])       => Math.pow(10,n),                  'augenpow n → 10ⁿ'],
+  geister2:    [1, ([n])       => Math.pow(2,n),                   'geister2 n → 2ⁿ'],
+  einheit:     [1, ([x])       => 1,                               'einheit x → x⁰ = 1'],
+  kehrwurz:    [1, ([x])       => 1/Math.sqrt(x),                 'kehrwurz x → 1/√x'],
+  silberwurz:  [1, ([x])       => Math.sqrt(x*x+1),               'silberwurz x → √(x²+1)'],
+  goldwurz:    [1, ([x])       => PHI * x,                        'goldwurz x → φ·x'],
+  stufe:       [1, ([x])       => Math.pow(x,x),                  'stufe x → xˣ'],
+  doppelwurz:  [1, ([x])       => Math.pow(x,0.25),               'doppelwurz x → x^(1/4)'],
+
+  // II · Logarithms & Exponentials
+  silber:      [1, ([x])       => Math.log10(x),                  'silber x → log₁₀(x)'],
+  natwuchs:    [1, ([x])       => Math.log(x),                    'natwuchs x → ln(x)'],
+  hauchatem:   [1, ([x])       => Math.exp(x),                    'hauchatem x → eˣ'],
+  grundlog:    [2, ([b,x])     => Math.log(x)/Math.log(b),        'grundlog b x → log_b(x)'],
+  zweierlog:   [1, ([x])       => Math.log2(x),                   'zweierlog x → log₂(x)'],
+  absturz:     [1, ([x])       => Math.exp(-x),                   'absturz x → e^(-x)'],
+  sigmoidwelt: [1, ([x])       => 1/(1+Math.exp(-x)),             'sigmoidwelt x → 1/(1+e^(-x))'],
+  feuerlog:    [1, ([x])       => -Math.log(x),                   'feuerlog x → -ln(x)'],
+  lnplus:      [1, ([x])       => Math.log1p(x),                  'lnplus x → ln(1+x)'],
+  expminus:    [1, ([x])       => 1-Math.exp(-x),                 'expminus x → 1−e^(-x)'],
+  logsumme:    [2, ([a,b])     => Math.log(Math.exp(a)+Math.exp(b)), 'logsumme a b → ln(eᵃ+eᵇ)'],
+  doppelln:    [1, ([x])       => Math.log(Math.log(x)),          'doppelln x → ln(ln(x))'],
+  wachsmal:    [2, ([x,n])     => n*Math.exp(x),                  'wachsmal x n → n·eˣ'],
+
+  // III · Trigonometry
+  mondkurve:   [1, ([t])       => Math.sin(t),                    'mondkurve θ → sin(θ)'],
+  sonnenwand:  [1, ([t])       => Math.cos(t),                    'sonnenwand θ → cos(θ)'],
+  schattenfall:[1, ([t])       => Math.tan(t),                    'schattenfall θ → tan(θ)'],
+  umkehrmond:  [1, ([x])       => Math.asin(x),                   'umkehrmond x → arcsin(x)'],
+  umkehrsonne: [1, ([x])       => Math.acos(x),                   'umkehrsonne x → arccos(x)'],
+  umkehratem:  [2, ([y,x])     => Math.atan2(y,x),                'umkehratem y x → arctan2(y,x)'],
+  kreis:       [1, ([r])       => Math.PI*r*r,                    'kreis r → π·r²'],
+  umfang:      [1, ([r])       => TAU*r,                          'umfang r → 2πr'],
+  bogenmass:   [1, ([d])       => d*Math.PI/180,                  'bogenmass d → d·π/180'],
+  gradmass:    [1, ([r])       => r*180/Math.PI,                  'gradmass r → r·180/π'],
+  sekante:     [1, ([t])       => 1/Math.cos(t),                  'sekante θ → 1/cos(θ)'],
+  kosekan:     [1, ([t])       => 1/Math.sin(t),                  'kosekan θ → 1/sin(θ)'],
+  kotangens:   [1, ([t])       => Math.cos(t)/Math.sin(t),        'kotangens θ → cos/sin'],
+  halbmond:    [1, ([t])       => Math.pow(Math.sin(t/2),2),      'halbmond θ → sin²(θ/2)'],
+  kreuzwelle:  [1, ([t])       => Math.sin(t)*Math.cos(t),        'kreuzwelle θ → sin·cos'],
+  kugelflach:  [1, ([r])       => 4*Math.PI*r*r,                  'kugelflach r → 4πr²'],
+
+  // IV · Summation & Sequences
+  dreieck:     [1, ([n])       => n*(n+1)/2,                      'dreieck n → n(n+1)/2'],
+  viereck:     [1, ([n])       => n*n,                            'viereck n → n²'],
+  fibonacci:   [1, ([n])       => fib(n),                         'fibonacci n → Fₙ'],
+  fakultät:    [1, ([n])       => factorial(n),                   'fakultät n → n!'],
+  arithmetik:  [3, ([a,d,n])   => a+(n-1)*d,                      'arithmetik a d n → a+(n-1)d'],
+  geomkette:   [3, ([a,r,n])   => a*Math.pow(r,n-1),              'geomkette a r n → a·rⁿ⁻¹'],
+  pascalzeile: [2, ([n,k])     => binomial(n,k),                  'pascalzeile n k → C(n,k)'],
+  wechsel:     [1, ([n])       => Math.pow(-1,n),                 'wechsel n → (−1)ⁿ'],
+  mersenne:    [1, ([p])       => Math.pow(2,p)-1,                'mersenne p → 2ᵖ−1'],
+  catalan:     [1, ([n])       => binomial(2*n,n)/(n+1),          'catalan n → C(2n,n)/(n+1)'],
+
+  // V · Modular & Integer
+  asche:       [2, ([x,n])     => ((x%n)+n)%n,                   'asche x n → x mod n'],
+  ganzboden:   [1, ([x])       => Math.floor(x),                  'ganzboden x → ⌊x⌋'],
+  ganzdecke:   [1, ([x])       => Math.ceil(x),                   'ganzdecke x → ⌈x⌉'],
+  runden:      [1, ([x])       => Math.round(x),                  'runden x → round(x)'],
+  absval:      [1, ([x])       => Math.abs(x),                    'absval x → |x|'],
+  vorzeichen:  [1, ([x])       => Math.sign(x),                   'vorzeichen x → sgn(x)'],
+  primzahl:    [1, ([n])       => isPrime(n) ? 1 : 0,             'primzahl n → 1 if prime'],
+  ggt:         [2, ([a,b])     => gcd(Math.abs(a),Math.abs(b)),   'ggt a b → gcd(a,b)'],
+  kgv:         [2, ([a,b])     => Math.abs(a*b)/gcd(Math.abs(a),Math.abs(b)), 'kgv a b → lcm(a,b)'],
+  ziffersum:   [1, ([n])       => String(Math.abs(Math.round(n))).split('').reduce((s,d)=>s+parseInt(d),0), 'ziffersum n → digit sum'],
+  eulerphi:    [1, ([n])       => totient(n),                     'eulerphi n → φ(n)'],
+  dualzahl:    [1, ([n])       => Math.round(n).toString(2),      'dualzahl n → binary string'],
+  hexzahl:     [1, ([n])       => Math.round(n).toString(16),     'hexzahl n → hex string'],
+
+  // VI · Statistics
+  gauss:       [3, ([x,m,s])   => Math.exp(-0.5*Math.pow((x-m)/s,2))/(s*Math.sqrt(TAU)), 'gauss x μ σ'],
+  zfehler:     [3, ([x,m,s])   => (x-m)/s,                       'zfehler x μ σ → z-score'],
+  sigmabinom:  [3, ([n,k,p])   => binomial(n,k)*Math.pow(p,k)*Math.pow(1-p,n-k), 'binomprob n k p'],
+  poisson:     [2, ([lam,k])   => Math.exp(-lam)*Math.pow(lam,k)/factorial(k), 'poisson λ k'],
+
+  // VII · Calculus (numerical)
+  ableitung:   [2, ([x, fcode])=> NaN, 'ableitung — use numeric form'],  // placeholder
+  grenzwert:   [1, ([x])       => x,                              'grenzwert x → identity (symbolic)'],
+
+  // VIII · Linear Algebra (scalars)
+  skalarprод:  [4, ([a,b,c,d]) => a*c+b*d,                       'skalarprод a b c d → (a,b)·(c,d)'],
+  norma:       [2, ([a,b])     => Math.sqrt(a*a+b*b),            'norma a b → ‖(a,b)‖'],
+  kreuzprод:   [4, ([a,b,c,d]) => a*d-b*c,                       'kreuzprод a b c d → det 2×2'],
+
+  // IX · Complex (real operations)
+  betragkomplex:[2,([a,b])     => Math.sqrt(a*a+b*b),            'betragkomplex a b → |a+bi|'],
+  winkelpol:   [2, ([a,b])     => Math.atan2(b,a),               'winkelpol a b → arg(a+bi)'],
+  gammafeld:   [1, ([z])       => gamma(z),                      'gammafeld z → Γ(z)'],
+
+  // X · Meta / constants
+  stille:      [0, ()          => 0,                              'stille → 0 (silence)'],
+  liebetanz:   [2, ([a,b])     => Math.abs(a-b),                  'liebetanz a b → |a−b| (commutator dist)'],
+};
+
+// ── math helpers ──
+function factorial(n) {
+  n = Math.round(Math.abs(n));
+  if (n > 170) return Infinity;
+  let r = 1; for (let i=2;i<=n;i++) r*=i; return r;
+}
+function fib(n) {
+  n = Math.round(n); if (n<0) return NaN;
+  if (n<=1) return n;
+  let a=0,b=1; for(let i=2;i<=n;i++){let c=a+b;a=b;b=c;} return b;
+}
+function gcd(a,b) { return b===0?a:gcd(b,a%b); }
+function binomial(n,k) {
+  n=Math.round(n);k=Math.round(k);
+  if (k<0||k>n) return 0;
+  if (k===0||k===n) return 1;
+  let r=1; for(let i=0;i<k;i++) r=r*(n-i)/(i+1); return Math.round(r);
+}
+function isPrime(n) {
+  n=Math.round(n); if(n<2)return false;
+  if(n<4)return true; if(n%2===0||n%3===0)return false;
+  for(let i=5;i*i<=n;i+=6) if(n%i===0||n%(i+2)===0) return false;
+  return true;
+}
+function totient(n) {
+  n=Math.round(n); let r=n;
+  for(let p=2;p*p<=n;p++) if(n%p===0){while(n%p===0)n=Math.floor(n/p);r-=Math.floor(r/p);}
+  if(n>1) r-=Math.floor(r/n); return r;
+}
+function gamma(z) {
+  // Lanczos approximation
+  if (z < 0.5) return Math.PI / (Math.sin(Math.PI*z) * gamma(1-z));
+  z -= 1;
+  const g = 7;
+  const c = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  let x = c[0];
+  for (let i=1;i<g+2;i++) x += c[i]/(z+i);
+  const t = z + g + 0.5;
+  return Math.sqrt(TAU) * Math.pow(t, z+0.5) * Math.exp(-t) * x;
+}
+
+// ── interpreter ──
+let bindings = {};
+
+function tokenize(line) {
+  // split on spaces but keep quoted strings together
+  return line.trim().split(/\s+/).filter(Boolean);
+}
+
+function resolveToken(tok) {
+  if (tok in bindings) return bindings[tok];
+  const n = parseFloat(tok);
+  if (!isNaN(n)) return n;
+  return null;
+}
+
+function evalLine(line) {
+  line = line.trim();
+  if (!line || line.startsWith('#')) return null;
+
+  const tokens = tokenize(line);
+  if (!tokens.length) return null;
+
+  // bind statement
+  if (tokens[0] === 'bind') {
+    // bind name = <expression>
+    const name = tokens[1];
+    if (tokens[2] !== '=') return { error: 'bind syntax: bind name = spell …' };
+    const rest = tokens.slice(3);
+    const result = evalTokens(rest);
+    if (result.error) return result;
+    bindings[name] = result.value;
+    return { value: result.value, bound: name };
+  }
+
+  // pipe chain: s1 | s2 | …
+  if (line.includes('|')) {
+    const parts = line.split('|').map(s=>s.trim()).filter(Boolean);
+    // evaluate rightmost first, feed result into next
+    let val = null;
+    for (let i = parts.length-1; i >= 0; i--) {
+      const toks = tokenize(parts[i]);
+      if (val !== null) toks.push(String(val));
+      const r = evalTokens(toks);
+      if (r.error) return r;
+      val = r.value;
+    }
+    return { value: val };
+  }
+
+  return evalTokens(tokens);
+}
+
+function evalTokens(tokens) {
+  if (!tokens.length) return { error: 'empty spell' };
+
+  const word = tokens[0].toLowerCase();
+  const spell = SPELLS[word] || SPELLS[tokens[0]];
+
+  if (!spell) {
+    // maybe it's just a number or binding
+    const v = resolveToken(tokens[0]);
+    if (v !== null) return { value: v };
+    return { error: `unknown spell: ${tokens[0]}` };
+  }
+
+  const [arity, fn] = spell;
+  const rawArgs = tokens.slice(1);
+
+  // resolve arguments
+  const args = [];
+  for (const t of rawArgs) {
+    const v = resolveToken(t);
+    if (v === null) return { error: `cannot resolve argument: ${t}` };
+    args.push(v);
+  }
+
+  if (args.length < arity) {
+    return { error: `${tokens[0]} needs ${arity} arg(s), got ${args.length}` };
+  }
+
+  try {
+    const result = fn(args);
+    if (typeof result === 'number' && isNaN(result)) return { error: `${tokens[0]}: result is NaN` };
+    return { value: result, word: tokens[0] };
+  } catch(e) {
+    return { error: `${tokens[0]}: ${e.message}` };
+  }
+}
+
+function fmt(v) {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') {
+    if (Number.isInteger(v)) return v.toString();
+    return parseFloat(v.toPrecision(10)).toString();
+  }
+  return String(v);
+}
+
+// ── run ──
+function runSpells() {
+  const code = document.getElementById('editor').value;
+  const lines = code.split('\n');
+  const out = document.getElementById('output');
+  out.innerHTML = '';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      if (trimmed.startsWith('#')) appendOutput('info', '  ', trimmed);
+      continue;
+    }
+
+    const result = evalLine(line);
+    if (!result) continue;
+
+    if (result.error) {
+      appendOutput('err', '✗', result.error);
+    } else if (result.bound !== undefined) {
+      appendOutput('val', '→', `${result.bound} = ${fmt(result.value)}`);
+    } else {
+      const echo = result.word || '';
+      appendOutput('val', '→', fmt(result.value), echo);
+    }
+  }
+
+  if (!out.innerHTML) {
+    appendOutput('info', '·', 'silence — no spells cast');
+  }
+}
+
+function appendOutput(type, arrow, text, word) {
+  const out = document.getElementById('output');
+  const div = document.createElement('div');
+  div.className = 'out-line';
+  const wd = word ? `<span class="word-echo">${word}</span> ` : '';
+  div.innerHTML = `<span class="arrow">${arrow}</span><span class="${type === 'err' ? 'err' : type === 'info' ? 'info' : 'val'}">${wd}${text}</span>`;
+  out.appendChild(div);
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearAll() {
+  document.getElementById('output').innerHTML = '';
+  document.getElementById('editor').value = '';
+  bindings = {};
+}
+
+// keyboard shortcut
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSpells(); }
+});
+
+// ── reference panel ──
+function buildRef() {
+  const list = document.getElementById('ref-list');
+  list.innerHTML = '';
+  const q = document.querySelector('.ref-search input').value.toLowerCase();
+  for (const [word, [arity, fn, sig]] of Object.entries(SPELLS)) {
+    if (q && !word.toLowerCase().includes(q) && !sig.toLowerCase().includes(q)) continue;
+    const div = document.createElement('div');
+    div.className = 'ref-item';
+    div.innerHTML = `<div class="ref-word">${word}</div><div class="ref-eq">${sig}</div>`;
+    div.onclick = () => insertSpell(word, arity);
+    list.appendChild(div);
+  }
+}
+
+function filterRef(q) { buildRef(); }
+
+function insertSpell(word, arity) {
+  const ed = document.getElementById('editor');
+  const placeholders = Array.from({length: arity}, (_,i) => String(i+1)).join(' ');
+  const insert = word + (placeholders ? ' ' + placeholders : '');
+  const pos = ed.selectionStart;
+  const before = ed.value.slice(0, pos);
+  const after  = ed.value.slice(pos);
+  const needsNewline = before.length > 0 && !before.endsWith('\n');
+  ed.value = before + (needsNewline ? '\n' : '') + insert + '\n' + after;
+  ed.focus();
+}
+
+buildRef();
+</script>
+</body>
+</html>
